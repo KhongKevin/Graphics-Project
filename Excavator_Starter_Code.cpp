@@ -84,7 +84,7 @@ void Display(GLFWwindow *w) {
 	
 	// Render the floor
 	floorMesh.Display(camera, 0);
-	excavator.Display(camera, 0);							// draw mesh with camera transform
+	excavator.Display(camera, 0, true);					// draw mesh with camera transform
 	glFlush();											// finish
 }
 
