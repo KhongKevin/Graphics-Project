@@ -21,7 +21,7 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="5-Demo-3D-Mesh.cpp">
+    <ClCompile Include="Excavator_Starter_Code.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Lib\Camera.cpp">

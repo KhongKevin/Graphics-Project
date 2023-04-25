@@ -139,7 +139,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="5-Demo-3D-Mesh.cpp" />
+    <ClCompile Include="Excavator_Starter_Code.cpp" />
     <ClCompile Include="Lib\Camera.cpp" />
     <ClCompile Include="Lib\Draw.cpp" />
     <ClCompile Include="Lib\glad.c" />
