@@ -11,16 +11,18 @@ Kevin Khong, Matthew Lau, Cong Ho
 #include "Mesh.h"										// cube.Read
 #include "Misc.h"										// Shift
 #include <cmath> // for sin, cos
+#include "Draw.h"
 #define M_PI 3.14159265358979323846
 
 int winWidth = 700, winHeight = 700;
 Camera camera(0, 0, winWidth, winHeight, vec3(0,0,0), vec3(0,0,-10), 30, .001f, 500);
 
 Mesh excavator;
+vec3 centerOfRotation(0, 0.4f, 0);
 Mesh floorMesh;
 
 const char* floorMeshFile = "D:/kevin/Code/Apps/Assets/flat_floor.obj";
-const char* excavatorMeshFile = "D:/kevin/Code/Apps/Assets/FabConvert.com_uploads_files_4292192_excavator+caterpillar+323d+-.obj";
+const char* excavatorMeshFile = "D:/kevin/Code/Apps/Assets/excavator_mesh.obj";
 
 //NOT WORKING (Need to find online mesh files with textures)
 const char *textureFile = "D:/kevin/Code/Apps/Assets/Parrots.jpg";
@@ -28,26 +30,100 @@ const char* yellowTextureFile = "D:/kevin/Code/Apps/Assets/yellow.jpg";
 
 
 //For Future Camera Controls and or excavator movement. Uses Arrow Keys as input.
+//void Key(GLFWwindow* w, int key, int scancode, int action, int mods) {
+//	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
+//		vec3 displacement(0, 0, 0);
+//		switch (key) {
+//		case GLFW_KEY_UP:
+//			displacement.z = -0.1f; // move camera forward
+//			break;
+//		case GLFW_KEY_DOWN:
+//			displacement.z = 0.1f; // move camera backward
+//			break;
+//		case GLFW_KEY_LEFT:
+//			displacement.x = -0.1f; // move camera left
+//			break;
+//		case GLFW_KEY_RIGHT:
+//			displacement.x = 0.1f; // move camera right
+//			break;
+//		}
+//		camera.Move(displacement); // move the camera based on the displacement
+//	}
+//}
+
+// Global variables
+vec3 excavatorVelocity(0, 0, 0);
+vec3 excavatorAcceleration(0, 0, 0);
+float maxVelocity = 0.02f;
+float maxAcceleration = 0.05f;
+
+vec3 clamp(const vec3& v, float minVal, float maxVal) {
+	vec3 clamped;
+	for (int i = 0; i < 3; i++) {
+		clamped[i] = std::min(std::max(v[i], minVal), maxVal);
+	}
+	return clamped;
+}
+
+
+void AccelerateExcavator(vec3 inputAcceleration, float damping = 1.0f) {
+	// Gradually increase acceleration up to maxAcceleration
+	for (int i = 0; i < 3; i++) {
+		if (abs(excavatorAcceleration[i] + inputAcceleration[i]) <= maxAcceleration) {
+			excavatorAcceleration[i] += inputAcceleration[i];
+		}
+		else {
+			excavatorAcceleration[i] = (excavatorAcceleration[i] > 0 ? maxAcceleration : -maxAcceleration);
+		}
+	}
+
+	// Update velocity based on acceleration
+	excavatorVelocity = clamp(excavatorVelocity + excavatorAcceleration, -maxVelocity, maxVelocity);
+
+	// Update the position based on the velocity
+	mat4 translationMatrix = Translate(excavatorVelocity.x, excavatorVelocity.y, excavatorVelocity.z);
+	excavator.toWorld =  excavator.toWorld * translationMatrix;
+	
+	//excavator.toWorld = translationMatrix * excavator.toWorld;
+
+	// Reset the acceleration
+	excavatorAcceleration = vec3(0, 0, 0);
+
+	// Apply damping to the velocity
+	excavatorVelocity *= damping;
+}
+
+
 void Key(GLFWwindow* w, int key, int scancode, int action, int mods) {
 	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-		vec3 displacement(0, 0, 0);
+		vec3 acceleration(0, 0, 0);
 		switch (key) {
 		case GLFW_KEY_UP:
-			displacement.z = -0.1f; // move camera forward
+			acceleration.y = -0.005f; // accelerate excavator forward
 			break;
 		case GLFW_KEY_DOWN:
-			displacement.z = 0.1f; // move camera backward
+			acceleration.y = 0.005f; // accelerate excavator backward
 			break;
 		case GLFW_KEY_LEFT:
-			displacement.x = -0.1f; // move camera left
+			acceleration.x = -0.005f; // accelerate excavator left
 			break;
 		case GLFW_KEY_RIGHT:
-			displacement.x = 0.1f; // move camera right
+			acceleration.x = 0.005f; // accelerate excavator right
+			break;
+		case 'R':
+			excavator.toWorld = excavator.toWorld * Translate(centerOfRotation) * RotateZ(10) * Translate(-centerOfRotation);
+			break;
+		case 'E':
+			excavator.toWorld = excavator.toWorld * Translate(centerOfRotation) * RotateZ(-10) * Translate(-centerOfRotation);
 			break;
 		}
-		camera.Move(displacement); // move the camera based on the displacement
+
+		AccelerateExcavator(acceleration);
 	}
 }
+
+
+
 
 // Rotation matrix around axis
 mat4 rotate(const mat4& m, float angle, const vec3& axis) {
@@ -79,12 +155,19 @@ float radians(float degrees) {
 void Display(GLFWwindow *w) {
 	glClearColor(.5f, .1f, .5f, 1);						// set background color
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// clear background and z-buffer
-	glEnable(GL_DEPTH_TEST);							// see only nearest surface
-	SetUniform(UseMeshShader(), "useLight", false);		// disable shading
-	
+	glEnable(GL_DEPTH_TEST);							// see only nearest surface 
+	int s = UseMeshShader();
+	SetUniform(s, "useLight", false);		// disable shading
+	SetUniform(s, "color", vec3(0.7f,0.2f,0.5f));
+
 	// Render the floor
 	floorMesh.Display(camera, 0);
-	excavator.Display(camera, 0, true);					// draw mesh with camera transform
+	SetUniform(s, "color", vec3(.8f, .8f, 0.0f));
+
+	excavator.Display(camera, 0);					// draw mesh with camera transform
+	UseDrawShader(camera.fullview);
+	glDisable(GL_DEPTH_TEST);
+	Disk(centerOfRotation, 12, vec3(1,0,0));
 	glFlush();											// finish
 }
 
@@ -140,10 +223,12 @@ int main(int ac, char **av) {
 	glfwSetKeyCallback(w, Key);
 
 	while (!glfwWindowShouldClose(w)) {
+		AccelerateExcavator(vec3(0, 0, 0), 0.9f); 
 		Display(w);
 		glfwPollEvents();
 		glfwSwapBuffers(w);
 	}
+
 }
 
 
