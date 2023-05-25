@@ -217,7 +217,8 @@ GLuint UseMeshShader(bool lines) {
 
 void Mesh::SetToWorld() {
 	// set toWorld given parent and wrtParent; recurse on children
-	toWorld = (parent? parent->toWorld : mat4())*wrtParent;
+	if (parent)
+		toWorld = parent->toWorld * wrtParent;
 	for (size_t i = 0; i < children.size(); i++)
 		children[i]->SetToWorld();
 }

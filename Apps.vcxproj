@@ -139,7 +139,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Excavator_Starter_Code.cpp" />
+    <ClCompile Include="ExcavatorGameNew.cpp" />
     <ClCompile Include="Lib\Camera.cpp" />
     <ClCompile Include="Lib\Draw.cpp" />
     <ClCompile Include="Lib\glad.c" />
@@ -152,27 +152,6 @@
     <ClCompile Include="Lib\Sprite.cpp" />
     <ClCompile Include="Lib\Text.cpp" />
     <ClCompile Include="Lib\Widgets.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="C:\Users\kevin\Downloads\Mesh.h" />
-    <ClInclude Include="C:\Users\kevin\Downloads\Misc.h" />
-    <ClInclude Include="Include\Camera.h" />
-    <ClInclude Include="Include\Draw.h" />
-    <ClInclude Include="Include\gl.h" />
-    <ClInclude Include="Include\glad.3.2.h" />
-    <ClInclude Include="Include\glad.4.3.h" />
-    <ClInclude Include="Include\glfw3.h" />
-    <ClInclude Include="Include\glfw3native.h" />
-    <ClInclude Include="Include\glu.h" />
-    <ClInclude Include="Include\IO.h" />
-    <ClInclude Include="Include\Letters.h" />
-    <ClInclude Include="Include\Quaternion.h" />
-    <ClInclude Include="Include\Sprite.h" />
-    <ClInclude Include="Include\STB_Image.h" />
-    <ClInclude Include="Include\STB_Image_Write.h" />
-    <ClInclude Include="Include\Text.h" />
-    <ClInclude Include="Include\VecMat.h" />
-    <ClInclude Include="Include\Widgets.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

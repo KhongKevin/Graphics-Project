@@ -57,67 +57,8 @@
     <ClCompile Include="Lib\Widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Excavator_Starter_Code.cpp">
+    <ClCompile Include="ExcavatorGameNew.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="C:\Users\kevin\Downloads\Mesh.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="C:\Users\kevin\Downloads\Misc.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Camera.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Draw.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\gl.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\glad.3.2.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\glad.4.3.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\glfw3.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\glfw3native.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\glu.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\IO.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Letters.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Quaternion.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Sprite.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\STB_Image.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\STB_Image_Write.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Text.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\VecMat.h">
-      <Filter>Include</Filter>
-    </ClInclude>
-    <ClInclude Include="Include\Widgets.h">
-      <Filter>Include</Filter>
-    </ClInclude>
   </ItemGroup>
 </Project>
