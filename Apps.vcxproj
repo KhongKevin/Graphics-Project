@@ -139,7 +139,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="ExcavatorGameNew.cpp" />
+    <ClCompile Include="ExcavatorGame.cpp" />
     <ClCompile Include="Lib\Camera.cpp" />
     <ClCompile Include="Lib\Draw.cpp" />
     <ClCompile Include="Lib\glad.c" />

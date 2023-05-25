@@ -28,7 +28,7 @@ int upperArmRotation = 0;
 vec3 centerOfRotation(0, 0.4f, 0);
 //vec3 centerOfLowerArmRotation(0, 0.4f, 0);
 vec3 centerOfLowerArmRotation(0, 0.1f, -.3f);
-vec3 centerOfUpperArmRotation(0, -1.0f, 0);
+vec3 centerOfUpperArmRotation(0, -1.0f, .3f);
 vec3 excavatorVelocity(0, 0, 0);
 vec3 excavatorAcceleration(0, 0, 0);
 float maxVelocity = 0.02f;
@@ -84,34 +84,6 @@ void AccelerateExcavator(vec3 inputAcceleration, float damping = 1.0f) {
 	excavatorVelocity *= damping;
 }
 
-//void Key(GLFWwindow* w, int key, int scancode, int action, int mods) {
-//	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-//		vec3 acceleration(0, 0, 0);
-//		switch (key) {
-//		case GLFW_KEY_UP:
-//			acceleration.y = -0.005f; // accelerate excavator forward
-//			break;
-//		case GLFW_KEY_DOWN:
-//			acceleration.y = 0.005f; // accelerate excavator backward
-//			break;
-//		case GLFW_KEY_RIGHT:
-//			acceleration.x = -0.005f; // accelerate excavator left
-//			break;
-//		case GLFW_KEY_LEFT:
-//			acceleration.x = 0.005f; // accelerate excavator right
-//			break;
-//		case 'R':
-//			excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(centerOfRotation) * RotateZ(10) * Translate(-centerOfRotation);
-//			break;
-//		case 'E':
-//			excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(centerOfRotation) * RotateZ(-10) * Translate(-centerOfRotation);
-//			break;
-//		}
-//		//excavatorTracks.SetToWorld();
-//		AccelerateExcavator(acceleration);
-//	}
-//}
-
 
 
 void Key(int key, bool press, bool shift, bool control) {
@@ -127,7 +99,11 @@ void Key(int key, bool press, bool shift, bool control) {
 			excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(centerOfRotation) * RotateZ(-10) * Translate(-centerOfRotation);
 		if (key == 'K') {
 			excavatorCab.toWorld = excavatorCab.toWorld * Translate(centerOfRotation) * RotateZ(10) * Translate(-centerOfRotation);
-			//excavatorCab.SetWrtParent();
+			excavatorCab.SetWrtParent();
+		}
+		if (key == 'L') {
+			excavatorCab.toWorld = excavatorCab.toWorld * Translate(centerOfRotation) * RotateZ(-10) * Translate(-centerOfRotation);
+			excavatorCab.SetWrtParent();
 		}
 		if (key == 'P' && (lowerArmRotation < 2)) {
 			excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(centerOfLowerArmRotation) * RotateX(15) * Translate(-centerOfLowerArmRotation);
