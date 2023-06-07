@@ -26,14 +26,13 @@ int upperArmRotation = 0;
 
 //location managment
 vec3 centerOfRotation(0, 0.4f, 0);
-//vec3 centerOfLowerArmRotation(0, 0.4f, 0);
 vec3 centerOfLowerArmRotation(0, 0.1f, -.3f);
 vec3 centerOfUpperArmRotation(0, -1.0f, .3f);
 vec3 excavatorVelocity(0, 0, 0);
 vec3 excavatorAcceleration(0, 0, 0);
 
 vec3 ballPosition = vec3(0, 0, 0);
-
+float originalBallScale = 0.1f;
 // Lights
 vec3	lights[] = { {1.3f, -.4f, .45f}, {-.4f, .6f, 1.f}, {.02f, .01f, .85f} };
 const	int nLights = sizeof(lights) / sizeof(vec3);
@@ -46,15 +45,31 @@ void* picked = NULL;
 int		key = 0, keyCount = 0;
 time_t	keydownTime = 0;
 
-bool ballPickedUp = false; // a flag to indicate if the ball has been picked up
+// a flag to indicate if the ball has been picked up
+bool ballPickedUp = false; 
 
 void PickupBall() {
-	if (!ballPickedUp && key == 'B') {
+	if (ballPickedUp) { // if the ball has been picked up
+		if (upperArmRotation < -4) { // if the upper arm's rotation count is more than 3
+			// find the ball in the upper arm's children and remove it
+			auto iter = std::find(excavatorUpperArm.children.begin(), excavatorUpperArm.children.end(), &ball);
+			if (iter != excavatorUpperArm.children.end()) {
+				excavatorUpperArm.children.erase(iter);
+			}
+			ball.parent = NULL; // remove the ball's parent
+			ballPickedUp = false; // set the flag to false
+			vec3 ballPos = vec3(ball.toWorld[3][0], ball.toWorld[3][1], ball.toWorld[3][2]);
+			ball.toWorld = Translate(ballPos) * Scale(originalBallScale); // reset the ball to the ground level with original scale
+		}
+	}
+
+
+	else {
 		vec4 ballPosition = ball.toWorld * vec4(vec3(0, 0, 0), 1); // get the ball's position
 		vec4 upperArmPosition = excavatorUpperArm.toWorld * vec4(vec3(0, 0, 0), 1); // get the upper arm's position
 		float distance = length(vec3(ballPosition) - vec3(upperArmPosition)); // calculate the distance between them
 
-		if (distance <= 0.2 && upperArmRotation <= 0) { // if the distance is less than or equal to a certain threshold
+		if (distance <= 0.6 && upperArmRotation > -1) { // if the distance is less than or equal to a certain threshold
 			excavatorUpperArm.children.push_back(&ball); // add the ball to the children of the upper arm
 			ball.parent = &excavatorUpperArm; // set the parent of the ball to be the upper arm
 			ball.SetWrtParent(); // update the ball's position relative to its parent
@@ -62,6 +77,9 @@ void PickupBall() {
 		}
 	}
 }
+
+
+
 
 
 
@@ -99,11 +117,13 @@ void TestKey() {
 		lowerArmRotation--;
 	}
 
+	//close upper arm
 	if (key == 'G' && (upperArmRotation < 5)) {
 		excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(7) * Translate(-centerOfUpperArmRotation);
 		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, -0.2f, 0);
 		excavatorUpperArm.SetWrtParent();
 		upperArmRotation++;
+		cout << "close?";
 	}
 	if (key == 'H' && (upperArmRotation > -5)) {
 		excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(-7) * Translate(-centerOfUpperArmRotation);
@@ -156,7 +176,7 @@ void Display() {
 	floorMesh.Display(camera);
 
 	// Render Excavator by parts
-	SetUniform(s, "color", vec3(0.2,0.2,0.2));
+	SetUniform(s, "color", vec3(0.2f,0.2f,0.2f));
 	excavatorTracks.Display(camera);
 	SetUniform(s, "color", yellow);
 	excavatorCab.Display(camera);
@@ -264,7 +284,7 @@ int main(int ac, char** av) {
 
 	//Create the ball
 	ball.Read(dir + "sphere.obj", NULL);
-	ball.toWorld = Translate(0, 0, -0.2) * Scale(0.1);
+	ball.toWorld = Translate(0, 0, -0.2) * Scale(originalBallScale);
 
 	// callbacks
 	RegisterMouseMove(MouseMove);
