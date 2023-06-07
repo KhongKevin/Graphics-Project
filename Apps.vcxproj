@@ -74,8 +74,8 @@
     <LibraryPath>D:\kevin\Code\Apps\Lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <IncludePath>D:\kevin\Code\Apps\Include;$(IncludePath)</IncludePath>
-    <LibraryPath>D:\kevin\Code\Apps\Lib;$(LibraryPath)</LibraryPath>
+    <IncludePath>C:\Users\kevin\source\repos\Graphics-Project\Include;$(IncludePath)</IncludePath>
+    <LibraryPath>C:\Users\kevin\source\repos\Graphics-Project\Lib;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
@@ -83,12 +83,13 @@
       <SDLCheck>true</SDLCheck>
       <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;_CRT_SECURE_NO_WARNINGS;CRT_SECURE_NO_DEPRECATE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>D:\kevin\Code\Apps\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>C:\Users\kevin\source\repos\Graphics-Project\Include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>glfw3.lib;opengl32.lib;glu32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <TargetMachine>MachineX86</TargetMachine>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -152,6 +153,38 @@
     <ClCompile Include="Lib\Sprite.cpp" />
     <ClCompile Include="Lib\Text.cpp" />
     <ClCompile Include="Lib\Widgets.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="Include\Camera - Copy.h" />
+    <ClInclude Include="Include\Camera.h" />
+    <ClInclude Include="Include\Draw - Copy.h" />
+    <ClInclude Include="Include\Draw.h" />
+    <ClInclude Include="Include\gl - Copy.h" />
+    <ClInclude Include="Include\gl.h" />
+    <ClInclude Include="Include\glad.3.2 - Copy.h" />
+    <ClInclude Include="Include\glad.3.2.h" />
+    <ClInclude Include="Include\glad.4.3.h" />
+    <ClInclude Include="Include\glad.h" />
+    <ClInclude Include="Include\glfw3.h" />
+    <ClInclude Include="Include\glfw3native.h" />
+    <ClInclude Include="Include\glu.h" />
+    <ClInclude Include="Include\GLXtras.h" />
+    <ClInclude Include="Include\IO.h" />
+    <ClInclude Include="Include\Letters.h" />
+    <ClInclude Include="Include\Mesh.h" />
+    <ClInclude Include="Include\Misc.h" />
+    <ClInclude Include="Include\openvr.h" />
+    <ClInclude Include="Include\Quaternion.h" />
+    <ClInclude Include="Include\Sprite.h" />
+    <ClInclude Include="Include\STB_Image.h" />
+    <ClInclude Include="Include\STB_Image_Write - Copy.h" />
+    <ClInclude Include="Include\STB_Image_Write.h" />
+    <ClInclude Include="Include\Text - Copy.h" />
+    <ClInclude Include="Include\Text.h" />
+    <ClInclude Include="Include\VecMat - Copy.h" />
+    <ClInclude Include="Include\VecMat.h" />
+    <ClInclude Include="Include\Widgets - Copy.h" />
+    <ClInclude Include="Include\Widgets.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

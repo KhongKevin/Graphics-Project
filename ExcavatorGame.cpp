@@ -1,147 +1,121 @@
 /*
 TEAM 9 Excavator.cpp
 Kevin Khong, Matthew Lau, Cong Ho
-
 */
 
-#include <cmath>										// for sin, cos
-#include <glad.h>										// OpenGL access 
-#include <glfw3.h>										// application framework
+#include <glad.h>					// OpenGL access 
+#include <glfw3.h>					// application framework
 #include <time.h>
-#include "Camera.h"										// view transforms on mouse input
+#include "Camera.h"					// view transforms from mouse input
 #include "Draw.h"
-#include "GLXtras.h"									// SetUniform
-#include "Mesh.h"										// cube.Read
-#include "Misc.h"										// Shift
-
-#define M_PI 3.14159265358979323846
+#include "GLXtras.h"				// SetUniform
+#include "Mesh.h"
 
 // Window, camera, directory, colors
-int winWidth = 1000, winHeight = 1000;
-Camera camera(0, 0, winWidth, winHeight, vec3(0, 0, 0), vec3(0, 0, -10), 30, .001f, 500);
-string dir("D:/kevin/Code/Apps/Assets/Models/");
-vec3 org(1, .55f, 0), blk(0, 0, 0);
+int		winWidth = 1000, winHeight = 1000;
+Camera	camera(0, 0, winWidth, winHeight, vec3(0, 0, 0), vec3(0, 0, -10));
+vec3	org(1, .55f, 0), blk(0, 0, 0), yellow(.8f, .8f, 0.0f);
+
+// Excavator
+vec3	tracksCOR(0, 0.4f, 0);		// center of rotation (about Z-axis, for tracks and cab)
+Mesh	excavatorTracks, excavatorLowerArm, excavatorUpperArm, excavatorCab, floorMesh;
 
 int lowerArmRotation = 0;
 int upperArmRotation = 0;
-// Excavator
+
 vec3 centerOfRotation(0, 0.4f, 0);
 //vec3 centerOfLowerArmRotation(0, 0.4f, 0);
 vec3 centerOfLowerArmRotation(0, 0.1f, -.3f);
 vec3 centerOfUpperArmRotation(0, -1.0f, .3f);
 vec3 excavatorVelocity(0, 0, 0);
 vec3 excavatorAcceleration(0, 0, 0);
-float maxVelocity = 0.02f;
-float maxAcceleration = 0.05f;
-
-
-//Meshes
-Mesh excavatorTracks, excavatorLowerArm, excavatorUpperArm, excavatorCab, floorMesh;
-
 
 // Lights
-vec3 lights[] = { {1.3f, -.4f, .45f}, {-.4f, .6f, 1.f}, {.02f, .01f, .85f} };
-const int nLights = sizeof(lights) / sizeof(vec3);
+vec3	lights[] = { {1.3f, -.4f, .45f}, {-.4f, .6f, 1.f}, {.02f, .01f, .85f} };
+const	int nLights = sizeof(lights) / sizeof(vec3);
 
-// Interaction
-Mover mover;
+// Mouse Interaction
+Mover	mover;
 void* picked = NULL;
 
+// Keyboard Operations
+int		key = 0, keyCount = 0;
+time_t	keydownTime = 0;
 
-vec3 clamp(const vec3& v, float minVal, float maxVal) {
-	vec3 clamped;
-	for (int i = 0; i < 3; i++)
-		clamped[i] = v[i] < minVal ? minVal : v[i] > maxVal ? maxVal : v[i];
-	return clamped;
-}
-
-void AccelerateExcavator(vec3 inputAcceleration, float damping = 1.0f) {
-	// Gradually increase acceleration up to maxAcceleration
-	for (int i = 0; i < 3; i++) {
-		if (abs(excavatorAcceleration[i] + inputAcceleration[i]) <= maxAcceleration) {
-			excavatorAcceleration[i] += inputAcceleration[i];
-		}
-		else {
-			excavatorAcceleration[i] = (excavatorAcceleration[i] > 0 ? maxAcceleration : -maxAcceleration);
-		}
+void TestKey() {
+	if (keyCount < 20) keyCount++;
+	if (key == GLFW_KEY_LEFT || key == GLFW_KEY_RIGHT) {
+		// rotate tracks
+		float a = key == GLFW_KEY_LEFT ? 1.f : -1.f;
+		excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(tracksCOR) * RotateZ(a) * Translate(-tracksCOR);
+	}
+	if (key == 'K' || key == 'L') {
+		// rotate cab
+		float a = key == 'K' ? -1.f : 1.f;
+		excavatorCab.toWorld = excavatorCab.toWorld * Translate(tracksCOR) * RotateZ(a) * Translate(-tracksCOR);
+		excavatorCab.SetWrtParent();
+	}
+	if (key == GLFW_KEY_UP || key == GLFW_KEY_DOWN) {
+		// move tracks
+		float speedMin = .005f, speedMax = .02f;
+		float a = keyCount / 20.f, speed = speedMin + a * (speedMax - speedMin); // accelerate for 20 keystrokes
+		float dy = key == GLFW_KEY_UP ? -speed : speed;
+		excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(0, dy, 0);
+	}
+	if (key == 'P' && (lowerArmRotation < 5)) {
+		excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(centerOfLowerArmRotation) * RotateX(7) * Translate(-centerOfLowerArmRotation);
+		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, -0.2f, 0);
+		excavatorLowerArm.SetWrtParent();
+		lowerArmRotation++;
+	}
+	if (key == 'O' && (lowerArmRotation > -5)) {
+		excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(centerOfLowerArmRotation) * RotateX(-7) * Translate(-centerOfLowerArmRotation);
+		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, 0.2f, 0);
+		excavatorLowerArm.SetWrtParent();
+		lowerArmRotation--;
 	}
 
-	// Update velocity based on acceleration
-	excavatorVelocity = clamp(excavatorVelocity + excavatorAcceleration, -maxVelocity, maxVelocity);
+	if (key == 'G' && (upperArmRotation < 5)) {
+		excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(7) * Translate(-centerOfUpperArmRotation);
+		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, -0.2f, 0);
+		excavatorUpperArm.SetWrtParent();
+		upperArmRotation++;
+	}
+	if (key == 'H' && (upperArmRotation > -5)) {
+		excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(-7) * Translate(-centerOfUpperArmRotation);
+		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, 0.2f, 0);
+		excavatorUpperArm.SetWrtParent();
+		upperArmRotation--;
 
-	// Update the position based on the velocity
-	mat4 translationMatrix = Translate(excavatorVelocity.x, excavatorVelocity.y, excavatorVelocity.z);
-	//excavator.toWorld = excavator.toWorld * translationMatrix;
-
-
-	excavatorTracks.toWorld = translationMatrix * excavatorTracks.toWorld;
+	}
+	// recursively update matrices
 	excavatorTracks.SetToWorld();
-
-	// Reset the acceleration
-	excavatorAcceleration = vec3(0, 0, 0);
-
-	// Apply damping to the velocity
-	excavatorVelocity *= damping;
 }
 
+void CheckKey() {
+	if (KeyDown(key) && (float)(clock() - keydownTime) / CLOCKS_PER_SEC > .1f)
+		TestKey();
+}
 
-
-void Key(int key, bool press, bool shift, bool control) {
-	if (press) {
-		vec3 acceleration(0, 0, 0);
-		if (key == GLFW_KEY_UP) acceleration.y = -0.005f; // accelerate excavator forward
-		if (key == GLFW_KEY_DOWN) acceleration.y = 0.005f; // accelerate excavator backward
-		if (key == GLFW_KEY_RIGHT)acceleration.x = -0.005f; // accelerate excavator left
-		if (key == GLFW_KEY_LEFT)acceleration.x = 0.005f; // accelerate excavator right
-		if (key == 'R')
-			excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(centerOfRotation) * RotateZ(10) * Translate(-centerOfRotation);
-		if (key == 'E')
-			excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(centerOfRotation) * RotateZ(-10) * Translate(-centerOfRotation);
-		if (key == 'K') {
-			excavatorCab.toWorld = excavatorCab.toWorld * Translate(centerOfRotation) * RotateZ(10) * Translate(-centerOfRotation);
-			excavatorCab.SetWrtParent();
-		}
-		if (key == 'L') {
-			excavatorCab.toWorld = excavatorCab.toWorld * Translate(centerOfRotation) * RotateZ(-10) * Translate(-centerOfRotation);
-			excavatorCab.SetWrtParent();
-		}
-		if (key == 'P' && (lowerArmRotation < 2)) {
-			excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(centerOfLowerArmRotation) * RotateX(15) * Translate(-centerOfLowerArmRotation);
-			//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, -0.2f, 0);
-			excavatorLowerArm.SetWrtParent();
-			lowerArmRotation++;
-		}
-		if (key == 'O' && (lowerArmRotation > -2)) {
-			excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(centerOfLowerArmRotation) * RotateX(-15) * Translate(-centerOfLowerArmRotation);
-			//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, 0.2f, 0);
-			excavatorLowerArm.SetWrtParent();
-			lowerArmRotation--;
-		}
-
-		if (key == 'G' && (upperArmRotation < 2)) {
-			excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(15) * Translate(-centerOfUpperArmRotation);
-			//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, -0.2f, 0);
-			excavatorUpperArm.SetWrtParent();
-			upperArmRotation++;
-		}
-		if (key == 'H' && (upperArmRotation > -2)) {
-			excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(-15) * Translate(-centerOfUpperArmRotation);
-			//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, 0.2f, 0);
-			excavatorUpperArm.SetWrtParent();
-			upperArmRotation--;
-
-		}
-		//excavatorTracks.SetToWorld();
-		AccelerateExcavator(acceleration);
+void Keyboard(GLFWwindow* w, int k, int scancode, int action, int mods) {
+	if (action == GLFW_RELEASE)
+		key = 0;
+	if (action == GLFW_PRESS) {
+		// cache key for subsequent test by CheckKey
+		key = k;
+		keydownTime = clock();
+		keyCount = 0;
+		TestKey();
 	}
 }
+
+// Display
 
 void Display() {
 	glClearColor(.4f, .4f, .8f, 1);						// set background color
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);	// clear background and z-buffer
 	glEnable(GL_DEPTH_TEST);							// see only nearest surface 
 	int s = UseMeshShader();
-	SetUniform(s, "color", vec3(.2f, .2f, .5f));
 	SetUniform(s, "facetedShading", true);
 	SetUniform(s, "twoSidedShading", true);
 
@@ -153,29 +127,29 @@ void Display() {
 	SetUniform3v(s, "lights", nLights, (float*)xLights);
 
 	// Render the floor
+	SetUniform(s, "color", vec3(.2f, .2f, .5f));
 	floorMesh.Display(camera);
 
-	// Render the Excavator
-	SetUniform(s, "color", vec3(.8f, .8f, 0.0f));
-
-	//Render Excavator by parts
-	excavatorTracks.Display(camera, 0);
-	excavatorCab.Display(camera, 0);
-	excavatorLowerArm.Display(camera, 0);
-	excavatorUpperArm.Display(camera, 0);
-
+	// Render Excavator by parts
+	SetUniform(s, "color", yellow);
+	excavatorTracks.Display(camera);
+	excavatorCab.Display(camera);
+	excavatorLowerArm.Display(camera);
+	excavatorUpperArm.Display(camera);
 
 	// Render annotations
 	UseDrawShader(camera.fullview);
 	glDisable(GL_DEPTH_TEST);
-	//	Disk(centerOfRotation, 12, vec3(1,0,0));
+	// Disk(centerOfRotation, 12, vec3(1,0,0));
 	for (int i = 0; i < nLights; i++)
 		Star(lights[i], 6, org, blk);
 	if (picked == &camera)
 		camera.Draw();
 
-	glFlush();											// finish
+	glFlush();
 }
+
+// Mouse Handlers
 
 void MouseButton(float x, float y, bool left, bool down) {
 	picked = NULL;
@@ -190,10 +164,9 @@ void MouseButton(float x, float y, bool left, bool down) {
 			camera.Down(x, y, Shift(), Control());
 		}
 	}
-	if (!down)
+	else
 		camera.Up();
 }
-
 
 void MouseMove(float x, float y, bool leftDown, bool rightDown) {
 	if (leftDown) {
@@ -204,85 +177,75 @@ void MouseMove(float x, float y, bool leftDown, bool rightDown) {
 	}
 }
 
-void MouseWheel(float spin) { camera.Wheel(spin, Shift()); }
+void MouseWheel(float spin) {
+	camera.Wheel(spin, Shift());
+}
+
+// Application
 
 void Resize(int width, int height) {
 	camera.Resize(width, height);
 	glViewport(0, 0, width, height);
 }
 
+const char* usage = R"(
+	mouse-drag:        rotate scene
+	with shift:        translate scene xy
+	mouse-wheel:       translate scene z
+	up/down arrows:    drive forward/backward
+	left/right arrows: rotate tracks
+	K/L:               rotate cab
+)";
+
 int main(int ac, char** av) {
-	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "3D-Mesh");
+	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Excavation Celebration");
 
+	// read excavator files
+	string dir("C:/Users/kevin/source/repos/Graphics-Project/Assets/Models/");
+	excavatorTracks.Read(dir + "tracks.obj", NULL, false);
+	excavatorLowerArm.Read(dir + "lowerArmFinal.obj", NULL, false);
+	excavatorUpperArm.Read(dir + "Arm.obj", NULL, false);
+	excavatorCab.Read(dir + "cabFinal.obj", NULL, false);
 
-	// Load in excavator by parts
-	excavatorTracks.Read(dir + "tracks.obj", dir + "yellow.jpg", NULL, false);
-	excavatorLowerArm.Read(dir + "lowerArmFinal.obj", dir + "yellow.jpg", NULL, false);
-	excavatorUpperArm.Read(dir + "Arm.obj", dir + "yellow.jpg", NULL, false);
-	excavatorCab.Read(dir + "cabFinal.obj", dir + "yellow.jpg", NULL, false);
-
-	// Assemble Parts
+	// position parts
 	excavatorTracks.toWorld = Translate(0, 0, 0.1f);
 	excavatorCab.toWorld = Translate(0, 0, 0.25f);
 	excavatorUpperArm.toWorld = Translate(0, 0, 0.35f);
 	excavatorLowerArm.toWorld = Translate(0, 0, 0.5f);
 
+	// make mesh heirarchy, tracks as root with cab as child
 	excavatorTracks.children.push_back(&excavatorCab);
 	excavatorCab.parent = &excavatorTracks;
 	excavatorCab.SetWrtParent();
 
+	// cab has lower arm as child
 	excavatorCab.children.push_back(&excavatorLowerArm);
 	excavatorLowerArm.parent = &excavatorCab;
 	excavatorLowerArm.SetWrtParent();
 
+	// lower arm has upper arm as child
 	excavatorLowerArm.children.push_back(&excavatorUpperArm);
 	excavatorUpperArm.parent = &excavatorLowerArm;
 	excavatorUpperArm.SetWrtParent();
 
-	// Create the floor mesh
+	// Create the floor
 	floorMesh.Read(dir + "flat_floor.obj");
 	floorMesh.toWorld = Translate(0, 0, -.5f) * RotateX(-90) * Scale(2);
-
 
 	// callbacks
 	RegisterMouseMove(MouseMove);
 	RegisterMouseButton(MouseButton);
 	RegisterMouseWheel(MouseWheel);
 	RegisterResize(Resize);
-	RegisterKeyboard(Key);
-	printf("mouse-drag:  rotate\nwith shift:  translate xy\nmouse-wheel: translate z\narrowkeys: translate x,y");
+	glfwSetKeyCallback(w, Keyboard);
+	printf("Usage:%s", usage);
+
 	// event loop
-	//glfwSetKeyCallback(w, Key);
-
-
 	while (!glfwWindowShouldClose(w)) {
-		//AccelerateExcavator(vec3(0, 0, 0), 0.9f);
+		CheckKey();
 		Display();
 		glfwPollEvents();
 		glfwSwapBuffers(w);
 	}
 
 }
-
-
-//For Future Camera Controls and or excavator movement. Uses Arrow Keys as input.
-//void Key(GLFWwindow* w, int key, int scancode, int action, int mods) {
-//	if (action == GLFW_PRESS || action == GLFW_REPEAT) {
-//		vec3 displacement(0, 0, 0);
-//		switch (key) {
-//		case GLFW_KEY_UP:
-//			displacement.z = -0.1f; // move camera forward
-//			break;
-//		case GLFW_KEY_DOWN:
-//			displacement.z = 0.1f; // move camera backward
-//			break;
-//		case GLFW_KEY_LEFT:
-//			displacement.x = -0.1f; // move camera left
-//			break;
-//		case GLFW_KEY_RIGHT:
-//			displacement.x = 0.1f; // move camera right
-//			break;
-//		}
-//		camera.Move(displacement); // move the camera based on the displacement
-//	}
-//}

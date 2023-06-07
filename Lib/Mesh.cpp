@@ -2,15 +2,14 @@
 
 #include "GLXtras.h"
 #include "Draw.h"
-#include "Misc.h"
 #include "Mesh.h"
 
 namespace {
 
-GLuint meshShaderLines = 0, meshShaderNoLines = 0;
+	GLuint meshShaderLines = 0, meshShaderNoLines = 0;
 
-// vertex shader
-const char *meshVertexShader = R"(
+	// vertex shader
+	const char* meshVertexShader = R"(
 	#version 410 core
 	layout (location = 0) in vec3 point;
 	layout (location = 1) in vec3 normal;
@@ -21,7 +20,6 @@ const char *meshVertexShader = R"(
 	out vec3 vPoint;
 	out vec3 vNormal;
 	out vec2 vUv;
-//	out vec3 vColor;
 	uniform bool useInstance = false;
 	uniform mat4 modelview;
 	uniform mat4 persp;
@@ -31,12 +29,11 @@ const char *meshVertexShader = R"(
 		vNormal = (m*vec4(normal, 0)).xyz;
 		gl_Position = persp*vec4(vPoint, 1);
 		vUv = uv;
-//		vColor = color;
 	}
 )";
 
-// geometry shader
-const char *meshGeometryShader = R"(
+	// geometry shader
+	const char* meshGeometryShader = R"(
 	#version 410 core
 	layout (triangles) in;
 	layout (triangle_strip, max_vertices = 3) out;
@@ -71,8 +68,8 @@ const char *meshGeometryShader = R"(
 	}
 )";
 
-// pixel shader
-const char *meshPixelShaderLines = R"(
+	// pixel shader
+	const char* meshPixelShaderLines = R"(
 	#version 410 core
 	in vec3 gPoint, gNormal;
 	in vec2 gUv;
@@ -132,32 +129,36 @@ const char *meshPixelShaderLines = R"(
 	}
 )";
 
-const char *meshPixelShaderNoLines = R"(
+	const char* meshPixelShaderNoLines = R"(
 	#version 410 core
 	in vec3 vPoint, vNormal;
 	in vec2 vUv;
+//	uniform mat4 persp;
 	uniform sampler2D textureImage;
 	uniform int nLights = 0;
 	uniform vec3 lights[20];
-	uniform vec3 defaultLight = vec3(0, 0, 0);
-	uniform vec3 color = vec3(1);
+	uniform vec3 defaultLight = vec3(1, 1, 1);
+	uniform vec3 color = vec3(1, 1, 1);
 	uniform float opacity = 1;
-	uniform float ambient = .2;
 	uniform bool useLight = true;
 	uniform bool useTexture = true;
 	uniform bool useTint = false;
 	uniform bool fwdFacingOnly = false;
-	uniform bool twoSidedShading = true;			// to see both sides of a surface
+	uniform bool twoSidedShading = false;
 	uniform bool facetedShading = false;
 	uniform float amb = .1, dif = .7, spc =.7;		// ambient, diffuse, specular
 	out vec4 pColor;
+	// special for Cleave.cpp
+	uniform vec4 cleaver;							// plane
+	uniform bool useCleaver = false;
 	float d = 0, s = 0;								// diffuse, specular terms
 	vec3 N, E;
 	void Intensity(vec3 light) {
 		vec3 L = normalize(light-vPoint);
 		float dd = dot(L, N);
-		bool sideViewer = gl_FrontFacing && N.z < 0, sideLight = dd > 0;
-		if (twoSidedShading || sideViewer == sideLight) {
+		bool sideLight = dd > 0;
+		bool sideViewer = gl_FrontFacing;
+		if (twoSidedShading || sideLight == sideViewer) {
 			d += abs(dd);
 			vec3 R = reflect(L, N);					// highlight vector
 			float h = max(0, dot(R, E));			// highlight term
@@ -178,7 +179,11 @@ const char *meshPixelShaderNoLines = R"(
 					Intensity(lights[i]);
 			ads = clamp(amb+dif*d, 0, 1)+spc*s;
 		}
-		if (useTexture) {
+		if (useCleaver) {
+			vec3 col = dot(cleaver, vec4(vPoint, 1)) < 0? vec3(1,0,0) : vec3(0,0,1);
+			pColor = vec4(col, 1); // vec4(ads*col, opacity);
+		}
+		else if (useTexture) {
 			pColor = vec4(ads*texture(textureImage, vUv).rgb, opacity);
 			if (useTint) {
 				pColor.r *= color.r;
@@ -188,11 +193,12 @@ const char *meshPixelShaderNoLines = R"(
 		}
 		else
 			pColor = vec4(ads*color, opacity);
-	//	if (true) pColor = gl_FrontFacing? vec4(0,1,0,1) : vec4(1,0,0,1);
 	}
 )";
 
 } // end namespace
+
+const char* GetMeshPixelShaderNoLines() { return meshPixelShaderNoLines; }
 
 GLuint GetMeshShader(bool lines) {
 	if (lines) {
@@ -227,15 +233,15 @@ bool Mesh::SetWrtParent() {
 	// set wrtParent: toWorld = parent.toWorld*wrtParent
 	if (parent != NULL) {
 		mat4 inv;
-		if (!InverseMatrix4x4((float *) &parent->toWorld, (float *) &inv))
+		if (!InverseMatrix4x4((float*)&parent->toWorld, (float*)&inv))
 			return false;
-		wrtParent = inv*toWorld;
+		wrtParent = inv * toWorld;
 	}
 	return true;
 }
 
 void Mesh::Display(Camera camera, int textureUnit, bool lines, bool useGroupColor) {
-	size_t nTris = triangles.size(), nQuads = quads.size();
+	int nTris = triangles.size(), nQuads = quads.size();
 	// enable shader and vertex array object
 	int shader = UseMeshShader(lines);
 	glBindVertexArray(vao);
@@ -243,12 +249,12 @@ void Mesh::Display(Camera camera, int textureUnit, bool lines, bool useGroupColo
 	bool useTexture = textureName > 0 && uvs.size() > 0 && textureUnit >= 0;
 	SetUniform(shader, "useTexture", useTexture);
 	if (useTexture) {
-		glActiveTexture(GL_TEXTURE0+textureUnit);
+		glActiveTexture(GL_TEXTURE0 + textureUnit);
 		glBindTexture(GL_TEXTURE_2D, textureName);
 		SetUniform(shader, "textureImage", textureUnit); // but app can unset useTexture
 	}
 	// set matrices
-	SetUniform(shader, "modelview", camera.modelview*toWorld);
+	SetUniform(shader, "modelview", camera.modelview * toWorld);
 	SetUniform(shader, "persp", camera.persp);
 	if (lines)
 		SetUniform(shader, "vp", Viewport());
@@ -257,49 +263,50 @@ void Mesh::Display(Camera camera, int textureUnit, bool lines, bool useGroupColo
 		int textureSet = 0;
 		glGetUniformiv(shader, glGetUniformLocation(shader, "useTexture"), &textureSet);
 		// show ungrouped triangles without texture mapping
-		int nGroups = triangleGroups.size(), nUngrouped = nGroups? triangleGroups[0].startTriangle : nTris;
+		int nGroups = triangleGroups.size(), nUngrouped = nGroups ? triangleGroups[0].startTriangle : nTris;
 		SetUniform(shader, "useTexture", false);
-		glDrawElements(GL_TRIANGLES, 3*nUngrouped, GL_UNSIGNED_INT, 0); // triangles.data());
+		glDrawElements(GL_TRIANGLES, 3 * nUngrouped, GL_UNSIGNED_INT, 0); // triangles.data());
 		// show grouped triangles with texture mapping
 		SetUniform(shader, "useTexture", textureSet == 1);
 		for (int i = 0; i < nGroups; i++) {
 			Group g = triangleGroups[i];
 			SetUniform(shader, "color", g.color);
-			glDrawElements(GL_TRIANGLES, 3*g.nTriangles, GL_UNSIGNED_INT, (void *) (3*g.startTriangle*sizeof(int)));
+			glDrawElements(GL_TRIANGLES, 3 * g.nTriangles, GL_UNSIGNED_INT, (void*)(3 * g.startTriangle * sizeof(int)));
 		}
 	}
 	else {
-		glDrawElements(GL_TRIANGLES, 3*nTris, GL_UNSIGNED_INT, 0);
+		glDrawElements(GL_TRIANGLES, 3 * nTris, GL_UNSIGNED_INT, 0);
 #ifdef GL_QUADS
 		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
-		glDrawElements(GL_QUADS, 4*nQuads, GL_UNSIGNED_INT, quads.data());
+		glDrawElements(GL_QUADS, 4 * nQuads, GL_UNSIGNED_INT, quads.data());
 #endif
 	}
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
 
 void Enable(int id, int ncomps, int offset) {
 	glEnableVertexAttribArray(id);
-	glVertexAttribPointer(id, ncomps, GL_FLOAT, GL_FALSE, 0, (void *) offset);
+	glVertexAttribPointer(id, ncomps, GL_FLOAT, GL_FALSE, 0, (void*)offset);
 }
 
-void Mesh::Buffer(vector<vec3> &pts, vector<vec3> *nrms, vector<vec2> *tex) {
-	size_t nPts = pts.size(), nNrms = nrms? nrms->size() : 0, nUvs = tex? tex->size() : 0;
+void Mesh::Buffer(vector<vec3>& pts, vector<vec3>* nrms, vector<vec2>* tex) {
+	size_t nPts = pts.size(), nNrms = nrms ? nrms->size() : 0, nUvs = tex ? tex->size() : 0;
 	if (!nPts) { printf("Buffer: no points!\n"); return; }
 	// create vertex buffer
 	if (!vBufferId)
 		glGenBuffers(1, &vBufferId);
 	glBindBuffer(GL_ARRAY_BUFFER, vBufferId);
 	// allocate GPU memory for vertex position, texture, normals
-	size_t sizePoints = nPts*sizeof(vec3), sizeNormals = nNrms*sizeof(vec3), sizeUvs = nUvs*sizeof(vec2);
-	int bufferSize = sizePoints+sizeUvs+sizeNormals;
+	size_t sizePoints = nPts * sizeof(vec3), sizeNormals = nNrms * sizeof(vec3), sizeUvs = nUvs * sizeof(vec2);
+	int bufferSize = sizePoints + sizeUvs + sizeNormals;
 	glBufferData(GL_ARRAY_BUFFER, bufferSize, NULL, GL_STATIC_DRAW);
 	// load vertex buffer
 	if (nPts) glBufferSubData(GL_ARRAY_BUFFER, 0, sizePoints, pts.data());
 	if (nNrms) glBufferSubData(GL_ARRAY_BUFFER, sizePoints, sizeNormals, nrms->data());
-	if (nUvs) glBufferSubData(GL_ARRAY_BUFFER, sizePoints+sizeNormals, sizeUvs, tex->data());
+	if (nUvs) glBufferSubData(GL_ARRAY_BUFFER, sizePoints + sizeNormals, sizeUvs, tex->data());
 	// create and load element buffer for triangles
-	size_t sizeTriangles = sizeof(int3)*triangles.size();
+	size_t sizeTriangles = sizeof(int3) * triangles.size();
 	glGenBuffers(1, &eBufferId);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, eBufferId);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeTriangles, triangles.data(), GL_STATIC_DRAW);
@@ -309,7 +316,7 @@ void Mesh::Buffer(vector<vec3> &pts, vector<vec3> *nrms, vector<vec2> *tex) {
 	// enable attributes
 	if (nPts) Enable(0, 3, 0);						// VertexAttribPointer(shader, "point", 3, 0, (void *) 0);
 	if (nNrms) Enable(1, 3, sizePoints);			// VertexAttribPointer(shader, "normal", 3, 0, (void *) sizePoints);
-	if (nUvs) Enable(2, 2, sizePoints+sizeNormals); // VertexAttribPointer(shader, "uv", 2, 0, (void *) (sizePoints+sizeNormals));
+	if (nUvs) Enable(2, 2, sizePoints + sizeNormals); // VertexAttribPointer(shader, "uv", 2, 0, (void *) (sizePoints+sizeNormals));
 	glBindBuffer(GL_ARRAY_BUFFER, 0);
 	glBindVertexArray(0);
 }
@@ -324,30 +331,33 @@ void Mesh::Clear() {
 	triangleMtls.resize(0);
 }
 
-void Mesh::Buffer() { Buffer(points, normals.size()? &normals : NULL, uvs.size()? &uvs : NULL); }
+void Mesh::Buffer() { Buffer(points, normals.size() ? &normals : NULL, uvs.size() ? &uvs : NULL); }
 
-void Mesh::Set(vector<vec3> &pts, vector<vec3> *nrms, vector<vec2> *tex, vector<int> *tris, vector<int> *quas) {
+void Mesh::Set(vector<vec3>& pts, vector<vec3>* nrms, vector<vec2>* tex, vector<int>* tris, vector<int>* quas) {
 	if (tris) {
-		triangles.resize(tris->size()/3);
-		for (int i = 0; i < (int) triangles.size(); i++)
-			triangles[i] = { (*tris)[3*i], (*tris)[3*i+1], (*tris)[3*i+2] };
+		triangles.resize(tris->size() / 3);
+		for (int i = 0; i < (int)triangles.size(); i++)
+			triangles[i] = { (*tris)[3 * i], (*tris)[3 * i + 1], (*tris)[3 * i + 2] };
 	}
 	if (quas) {
-		quads.resize(quas->size()/4);
-		for (int i = 0; i < (int) quads.size(); i++)
-			quads[i] = { (*quas)[4*i], (*quas)[4*i+1], (*quas)[4*i+2], (*quas)[4*i+3] };
+		quads.resize(quas->size() / 4);
+		for (int i = 0; i < (int)quads.size(); i++)
+			quads[i] = { (*quas)[4 * i], (*quas)[4 * i + 1], (*quas)[4 * i + 2], (*quas)[4 * i + 3] };
 	}
 	Buffer(pts, nrms, tex);
 }
 
-bool Mesh::Read(string objFile, mat4 *m, bool standardize, bool buffer, bool forceTriangles) {
-	if (!ReadAsciiObj((char *) objFile.c_str(), points, triangles, &normals, &uvs, &triangleGroups, &triangleMtls, forceTriangles? NULL : &quads, NULL)) {
+bool Mesh::Read(string objFile, mat4* m, bool standardize, bool buffer, bool forceTriangles) {
+	if (!ReadAsciiObj((char*)objFile.c_str(), points, triangles, &normals, &uvs, &triangleGroups, &triangleMtls, forceTriangles ? NULL : &quads, NULL)) {
 		printf("Mesh.Read: can't read %s\n", objFile.c_str());
 		return false;
 	}
 	objFilename = objFile;
-	if (standardize)
+	if (standardize) {
 		Standardize(points.data(), points.size(), 1);
+		for (size_t i = 0; i < normals.size(); i++)
+			normals[i] = normalize(normals[i]);
+	}
 	if (buffer)
 		Buffer();
 	if (m)
@@ -355,12 +365,15 @@ bool Mesh::Read(string objFile, mat4 *m, bool standardize, bool buffer, bool for
 	return true;
 }
 
-bool Mesh::Read(string objFile, string texFile, mat4 *m, bool standardize, bool buffer, bool forceTriangles) {
+bool Mesh::Read(string objFile, string texFile, mat4* m, bool standardize, bool buffer, bool forceTriangles) {
+#ifdef __APPLE__
+	forceTriangles = true;
+#endif
 	if (!Read(objFile, m, standardize, buffer, forceTriangles))
 		return false;
 	objFilename = objFile;
 	texFilename = texFile;
-	textureName = ReadTexture((char *) texFile.c_str());
+	textureName = ReadTexture((char*)texFile.c_str());
 	if (!textureName)
 		printf("Mesh.Read: bad texture name\n");
 	return textureName > 0;
@@ -368,102 +381,118 @@ bool Mesh::Read(string objFile, string texFile, mat4 *m, bool standardize, bool 
 
 // intersections
 
-vec2 MajPln(vec3 &p, int mp) { return mp == 1? vec2(p.y, p.z) : mp == 2? vec2(p.x, p.z) : vec2(p.x, p.y); }
+vec2 MajPln(vec3& p, int mp) { return mp == 1 ? vec2(p.y, p.z) : mp == 2 ? vec2(p.x, p.z) : vec2(p.x, p.y); }
 
 TriInfo::TriInfo(vec3 a, vec3 b, vec3 c) {
-	vec3 v1(b-a), v2(c-b), x = normalize(cross(v1, v2));
+	vec3 v1(b - a), v2(c - b), x = normalize(cross(v1, v2));
 	plane = vec4(x.x, x.y, x.z, -dot(a, x));
 	float ax = fabs(x.x), ay = fabs(x.y), az = fabs(x.z);
-	majorPlane = ax > ay? (ax > az? 1 : 3) : (ay > az? 2 : 3);
+	majorPlane = ax > ay ? (ax > az ? 1 : 3) : (ay > az ? 2 : 3);
 	p1 = MajPln(a, majorPlane);
 	p2 = MajPln(b, majorPlane);
 	p3 = MajPln(c, majorPlane);
 }
 
 QuadInfo::QuadInfo(vec3 a, vec3 b, vec3 c, vec3 d) {
-	vec3 v1(b-a), v2(c-b), x = normalize(cross(v1, v2));
+	vec3 v1(b - a), v2(c - b), x = normalize(cross(v1, v2));
 	plane = vec4(x.x, x.y, x.z, -dot(a, x));
 	float ax = fabs(x.x), ay = fabs(x.y), az = fabs(x.z);
-	majorPlane = ax > ay? (ax > az? 1 : 3) : (ay > az? 2 : 3);
+	majorPlane = ax > ay ? (ax > az ? 1 : 3) : (ay > az ? 2 : 3);
 	p1 = MajPln(a, majorPlane);
 	p2 = MajPln(b, majorPlane);
 	p3 = MajPln(c, majorPlane);
 	p4 = MajPln(d, majorPlane);
 }
 
-bool LineIntersectPlane(vec3 p1, vec3 p2, vec4 plane, vec3 *intersection, float *alpha) {
-  vec3 normal(plane.x, plane.y, plane.z);
-  vec3 axis(p2-p1);
-  float pdDot = dot(axis, normal);
-  if (fabs(pdDot) < FLT_MIN)
-	  return false;
-  float a = (-plane.w-dot(p1, normal))/pdDot;
-  if (intersection != NULL)
-	  *intersection = p1+a*axis;
-  if (alpha)
-	  *alpha = a;
-  return true;
+bool LineIntersectPlane(vec3 p1, vec3 p2, vec4 plane, vec3* intersection, float* alpha) {
+	vec3 normal(plane.x, plane.y, plane.z);
+	vec3 axis(p2 - p1);
+	float pdDot = dot(axis, normal);
+	if (fabs(pdDot) < FLT_MIN)
+		return false;
+	float a = (-plane.w - dot(p1, normal)) / pdDot;
+	if (intersection != NULL)
+		*intersection = p1 + a * axis;
+	if (alpha)
+		*alpha = a;
+	return true;
 }
 
 static bool IsZero(float d) { return d < FLT_EPSILON && d > -FLT_EPSILON; };
 
-int CompareVs(vec2 &v1, vec2 &v2) {
+int CompareVs(vec2& v1, vec2& v2) {
 	if ((v1.y > 0 && v2.y > 0) ||           // edge is fully above query point p'
 		(v1.y < 0 && v2.y < 0) ||           // edge is fully below p'
 		(v1.x < 0 && v2.x < 0))             // edge is fully left of p'
 		return 0;                           // can't cross
-	float zcross = v2.y*v1.x-v1.y*v2.x;     // right-handed cross-product
-	zcross /= length(v1-v2);
+	float zcross = v2.y * v1.x - v1.y * v2.x;     // right-handed cross-product
+	zcross /= length(v1 - v2);
 	if (IsZero(zcross) && (v1.x <= 0 || v2.x <= 0))
 		return 1;                           // on or very close to edge
-	if ((v1.y > 0 || v2.y > 0) && ((v1.y-v2.y < 0) != (zcross < 0)))
+	if ((v1.y > 0 || v2.y > 0) && ((v1.y - v2.y < 0) != (zcross < 0)))
 		return 2;                           // edge is crossed
 	else
 		return 0;                           // edge not crossed
 }
 
-bool IsInside(const vec2 &p, vector<vec2> &pts) {
+bool IsInside(const vec2& p, vector<vec2>& pts) {
 	bool odd = false;
 	int npts = pts.size();
-	vec2 q = p, v2 = pts[npts-1]-q;
+	vec2 q = p, v2 = pts[npts - 1] - q;
 	for (int n = 0; n < npts; n++) {
 		vec2 v1 = v2;
-		v2 = pts[n]-q;
+		v2 = pts[n] - q;
 		if (CompareVs(v1, v2) == 2)
 			odd = !odd;
 	}
 	return odd;
 }
 
-bool IsInside(const vec2 &p, const vec2 &a, const vec2 &b, const vec2 &c) {
+bool IsInside(const vec2& p, const vec2& a, const vec2& b, const vec2& c) {
 	bool odd = false;
-	vec2 q = p, v2 = c-q;
+	vec2 q = p, v2 = c - q;
 	for (int n = 0; n < 3; n++) {
 		vec2 v1 = v2;
-		v2 = (n==0? a : n==1? b : c)-q;
+		v2 = (n == 0 ? a : n == 1 ? b : c) - q;
 		if (CompareVs(v1, v2) == 2)
 			odd = !odd;
 	}
 	return odd;
 }
 
-void BuildTriInfos(vector<vec3> &points, vector<int3> &triangles, vector<TriInfo> &triInfos) {
+void BuildTriInfos(vector<vec3>& points, vector<int3>& triangles, vector<TriInfo>& triInfos) {
 	triInfos.resize(triangles.size());
 	for (size_t i = 0; i < triangles.size(); i++)
 		triInfos[i] = TriInfo(points[triangles[i].i1], points[triangles[i].i2], points[triangles[i].i3]);
 }
 
-void BuildQuadInfos(vector<vec3> &points, vector<int4> &quads, vector<QuadInfo> &quadInfos) {
+void BuildQuadInfos(vector<vec3>& points, vector<int4>& quads, vector<QuadInfo>& quadInfos) {
 	quadInfos.resize(quads.size());
 	for (size_t i = 0; i < quads.size(); i++)
 		quadInfos[i] = QuadInfo(points[quads[i].i1], points[quads[i].i2], points[quads[i].i3], points[quads[i].i4]);
 }
 
-int IntersectWithLine(vec3 p1, vec3 p2, vector<TriInfo> &triInfos, float &retAlpha) {
+void Mesh::BuildInfos() {
+	vec3 min, max;
+	Bounds(points.data(), points.size(), min, max);
+	float l = min.x, r = max.x, b = min.y, t = max.y, n = min.z, f = max.z;
+	vec3 lbn(l, b, n), ltn(l, t, n), lbf(l, b, f), ltf(l, t, f), rbn(r, b, n), rtn(r, t, n), rbf(r, b, f), rtf(r, t, f);
+	bounds.resize(6);
+	bounds[0] = QuadInfo(lbn, ltn, ltf, lbf); // left (ccw)
+	bounds[1] = QuadInfo(rbn, rbf, rtf, rtn); // right
+	bounds[2] = QuadInfo(lbn, lbf, rbf, rbn); // bottom
+	bounds[3] = QuadInfo(ltn, rtn, rtf, ltf); // top
+	bounds[4] = QuadInfo(lbn, rbn, rtn, ltn); // near
+	bounds[5] = QuadInfo(lbf, ltf, rtf, rbf); // far
+	BuildTriInfos(points, triangles, triInfos);
+	BuildQuadInfos(points, quads, quadInfos);
+}
+
+int IntersectWithLine(vec3 p1, vec3 p2, vector<TriInfo>& triInfos, float& retAlpha) {
 	int picked = -1;
 	float alpha, minAlpha = FLT_MAX;
 	for (size_t i = 0; i < triInfos.size(); i++) {
-		TriInfo &t = triInfos[i];
+		TriInfo& t = triInfos[i];
 		vec3 inter;
 		if (LineIntersectPlane(p1, p2, t.plane, &inter, &alpha))
 			if (alpha < minAlpha) {
@@ -477,11 +506,11 @@ int IntersectWithLine(vec3 p1, vec3 p2, vector<TriInfo> &triInfos, float &retAlp
 	return picked;
 }
 
-int IntersectWithLine(vec3 p1, vec3 p2, vector<QuadInfo> &quadInfos, float &retAlpha) {
+int IntersectWithLine(vec3 p1, vec3 p2, vector<QuadInfo>& quadInfos, float& retAlpha) {
 	int picked = -1;
 	float alpha, minAlpha = FLT_MAX;
 	for (size_t i = 0; i < quadInfos.size(); i++) {
-		QuadInfo &q = quadInfos[i];
+		QuadInfo& q = quadInfos[i];
 		vec3 inter;
 		if (LineIntersectPlane(p1, p2, q.plane, &inter, &alpha))
 			if (alpha < minAlpha) {
@@ -494,6 +523,32 @@ int IntersectWithLine(vec3 p1, vec3 p2, vector<QuadInfo> &quadInfos, float &retA
 	}
 	retAlpha = minAlpha;
 	return picked;
+}
+
+bool Mesh::IntersectWithLine(vec3 p1, vec3 p2, float* alpha) {
+	if (triInfos.size() == 0 && quadInfos.size() == 0)
+		BuildInfos();
+	float a;
+	if (::IntersectWithLine(p1, p2, bounds, a) < 0)
+		return false;
+	if (::IntersectWithLine(p1, p2, triInfos, a) >= 0) {
+		if (alpha) *alpha = a;
+		return true;
+	}
+	if (::IntersectWithLine(p1, p2, quadInfos, a) >= 0) {
+		if (alpha) *alpha = a;
+		return true;
+	}
+	return false;
+}
+
+bool Mesh::IntersectWithSegment(vec3 p1, vec3 p2, float* alpha) {
+	float a;
+	if (IntersectWithLine(p1, p2, &a) && a >= 0 && a <= 1) {
+		if (alpha) *alpha = a;
+		return true;
+	}
+	return false;
 }
 
 /* Wayside
