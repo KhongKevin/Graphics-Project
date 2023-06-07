@@ -18,17 +18,21 @@ vec3	org(1, .55f, 0), blk(0, 0, 0), yellow(.8f, .8f, 0.0f);
 
 // Excavator
 vec3	tracksCOR(0, 0.4f, 0);		// center of rotation (about Z-axis, for tracks and cab)
-Mesh	excavatorTracks, excavatorLowerArm, excavatorUpperArm, excavatorCab, floorMesh;
+Mesh	excavatorTracks, excavatorLowerArm, excavatorUpperArm, excavatorCab, floorMesh, ball;
 
 int lowerArmRotation = 0;
 int upperArmRotation = 0;
 
+
+//location managment
 vec3 centerOfRotation(0, 0.4f, 0);
 //vec3 centerOfLowerArmRotation(0, 0.4f, 0);
 vec3 centerOfLowerArmRotation(0, 0.1f, -.3f);
 vec3 centerOfUpperArmRotation(0, -1.0f, .3f);
 vec3 excavatorVelocity(0, 0, 0);
 vec3 excavatorAcceleration(0, 0, 0);
+
+vec3 ballPosition = vec3(0, 0, 0);
 
 // Lights
 vec3	lights[] = { {1.3f, -.4f, .45f}, {-.4f, .6f, 1.f}, {.02f, .01f, .85f} };
@@ -41,6 +45,26 @@ void* picked = NULL;
 // Keyboard Operations
 int		key = 0, keyCount = 0;
 time_t	keydownTime = 0;
+
+bool ballPickedUp = false; // a flag to indicate if the ball has been picked up
+
+void PickupBall() {
+	if (!ballPickedUp && key == 'B') {
+		vec4 ballPosition = ball.toWorld * vec4(vec3(0, 0, 0), 1); // get the ball's position
+		vec4 upperArmPosition = excavatorUpperArm.toWorld * vec4(vec3(0, 0, 0), 1); // get the upper arm's position
+		float distance = length(vec3(ballPosition) - vec3(upperArmPosition)); // calculate the distance between them
+
+		if (distance <= 0.2 && upperArmRotation <= 0) { // if the distance is less than or equal to a certain threshold
+			excavatorUpperArm.children.push_back(&ball); // add the ball to the children of the upper arm
+			ball.parent = &excavatorUpperArm; // set the parent of the ball to be the upper arm
+			ball.SetWrtParent(); // update the ball's position relative to its parent
+			ballPickedUp = true; // set the flag to true
+		}
+	}
+}
+
+
+
 
 void TestKey() {
 	if (keyCount < 20) keyCount++;
@@ -88,6 +112,7 @@ void TestKey() {
 		upperArmRotation--;
 
 	}
+	PickupBall();
 	// recursively update matrices
 	excavatorTracks.SetToWorld();
 }
@@ -131,11 +156,17 @@ void Display() {
 	floorMesh.Display(camera);
 
 	// Render Excavator by parts
-	SetUniform(s, "color", yellow);
+	SetUniform(s, "color", vec3(0.2,0.2,0.2));
 	excavatorTracks.Display(camera);
+	SetUniform(s, "color", yellow);
 	excavatorCab.Display(camera);
 	excavatorLowerArm.Display(camera);
 	excavatorUpperArm.Display(camera);
+
+	// Render the ball
+	SetUniform(s, "color", vec3(1.0f, 0.0f, 0.0f)); // Set the color of the ball
+	ball.Display(camera); // The ball's toWorld transformation will be calculated automatically
+
 
 	// Render annotations
 	UseDrawShader(camera.fullview);
@@ -145,7 +176,6 @@ void Display() {
 		Star(lights[i], 6, org, blk);
 	if (picked == &camera)
 		camera.Draw();
-
 	glFlush();
 }
 
@@ -229,8 +259,12 @@ int main(int ac, char** av) {
 	excavatorUpperArm.SetWrtParent();
 
 	// Create the floor
-	floorMesh.Read(dir + "flat_floor.obj");
+	floorMesh.Read(dir + "flat_floor.obj", NULL, false);
 	floorMesh.toWorld = Translate(0, 0, -.5f) * RotateX(-90) * Scale(2);
+
+	//Create the ball
+	ball.Read(dir + "sphere.obj", NULL);
+	ball.toWorld = Translate(0, 0, -0.2) * Scale(0.1);
 
 	// callbacks
 	RegisterMouseMove(MouseMove);
