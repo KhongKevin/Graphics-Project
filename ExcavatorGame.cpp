@@ -107,7 +107,7 @@ void PickupBall() {
 		float distance = length(vec3(ballPosition) - vec3(bottomOfUpperArmPosition)); 
 		// calculate the distance between them
 
-		if (distance <= 0.15 && upperArmRotation > -1) {
+		if (distance <= 0.20 && upperArmRotation > -1) {
 			excavatorUpperArm.children.push_back(&ball); // add the ball to the children of the upper arm
 			ball.parent = &excavatorUpperArm; //set the parent of the ball to be the upper arm
 			ball.SetWrtParent(); // update the ball's position relative to its parent
