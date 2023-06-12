@@ -22,10 +22,6 @@ vec3	org(1, .55f, 0), blk(0, 0, 0), yellow(.8f, .8f, 0.0f);
 vec3	tracksCOR(0, 0.4f, 0);		// center of rotation (about Z-axis, for tracks and cab)
 Mesh	excavatorTracks, excavatorLowerArm, excavatorUpperArm, excavatorCab, floorMesh, ball, tree;
 
-//load trees in randomly
-std::vector<Mesh> trees;
-std::vector<vec3> treeLocations;
-
 
 int lowerArmRotation = 0;
 int upperArmRotation = 0;
@@ -276,7 +272,6 @@ void MouseWheel(float spin) {
 }
 
 // Application
-
 void Resize(int width, int height) {
 	camera.Resize(width, height);
 	glViewport(0, 0, width, height);
