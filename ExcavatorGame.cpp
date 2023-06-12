@@ -325,11 +325,11 @@ int main(int ac, char** av) {
 
 	//Create the ball
 	ball.Read(dir + "sphere.obj", NULL);
-	ball.toWorld = Translate(0, 0, -0.2) * Scale(originalBallScale);
+	ball.toWorld = Translate(0, 0, -0.2f) * Scale(originalBallScale);
 
 	//create the tree
 	tree.Read(dir + "tree.obj", NULL);
-	tree.toWorld = Translate(0, 3, 0.5) * RotateX(90);
+	tree.toWorld = Translate(0, 3, 0.5f) * RotateX(90);
 
 
 	// callbacks
