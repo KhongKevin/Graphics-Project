@@ -10,6 +10,8 @@ Kevin Khong, Matthew Lau, Cong Ho
 #include "Draw.h"
 #include "GLXtras.h"				// SetUniform
 #include "Mesh.h"
+#include <random>
+
 
 // Window, camera, directory, colors
 int		winWidth = 1000, winHeight = 1000;
@@ -18,7 +20,12 @@ vec3	org(1, .55f, 0), blk(0, 0, 0), yellow(.8f, .8f, 0.0f);
 
 // Excavator
 vec3	tracksCOR(0, 0.4f, 0);		// center of rotation (about Z-axis, for tracks and cab)
-Mesh	excavatorTracks, excavatorLowerArm, excavatorUpperArm, excavatorCab, floorMesh, ball;
+Mesh	excavatorTracks, excavatorLowerArm, excavatorUpperArm, excavatorCab, floorMesh, ball, tree;
+
+//load trees in randomly
+std::vector<Mesh> trees;
+std::vector<vec3> treeLocations;
+
 
 int lowerArmRotation = 0;
 int upperArmRotation = 0;
@@ -31,8 +38,17 @@ vec3 centerOfUpperArmRotation(0, -1.0f, .3f);
 vec3 excavatorVelocity(0, 0, 0);
 vec3 excavatorAcceleration(0, 0, 0);
 
+vec3 bottomOfUpperArmLoc(0, -0.9f, -0.4f);
+
+
+//balls
 vec3 ballPosition = vec3(0, 0, 0);
 float originalBallScale = 0.1f;
+float fallProgress = 0.0f;
+float fallSpeed = 0.01f;  //adjust ball speed
+float dropZ = 0.0f;
+
+
 // Lights
 vec3	lights[] = { {1.3f, -.4f, .45f}, {-.4f, .6f, 1.f}, {.02f, .01f, .85f} };
 const	int nLights = sizeof(lights) / sizeof(vec3);
@@ -46,11 +62,35 @@ int		key = 0, keyCount = 0;
 time_t	keydownTime = 0;
 
 // a flag to indicate if the ball has been picked up
-bool ballPickedUp = false; 
+bool ballPickedUp = false;
+
+void DropBall() {
+	fallProgress += fallSpeed;
+	if (!ballPickedUp && fallProgress < 10.0f) {
+		if (fallProgress > 10.0f) fallProgress = 10.0f;
+		
+		// Get current X and Y positions of the ball
+		float currentX = ball.wrtParent[3][0];
+		float currentY = ball.wrtParent[3][1];
+
+		
+
+		float newZ = dropZ - fallProgress;
+		if (newZ < 0.1f) {
+			newZ = 0.1f;  // Prevent the ball from dropping below floor
+		}
+		vec3 newPos = vec3(currentX, currentY, newZ);
+		ball.wrtParent = Translate(newPos) * Scale(originalBallScale);
+		ball.SetWrtParent(); // Update the ball's toWorld transformation based on its new wrtParent transformation
+	}
+}
+
+
 
 void PickupBall() {
+	//DROP
 	if (ballPickedUp) { // if the ball has been picked up
-		if (upperArmRotation < -4) { // if the upper arm's rotation count is more than 3
+		if (upperArmRotation < -4) { // if the upper arm's rotation count is more than 3 drop the ball
 			// find the ball in the upper arm's children and remove it
 			auto iter = std::find(excavatorUpperArm.children.begin(), excavatorUpperArm.children.end(), &ball);
 			if (iter != excavatorUpperArm.children.end()) {
@@ -58,27 +98,29 @@ void PickupBall() {
 			}
 			ball.parent = NULL; // remove the ball's parent
 			ballPickedUp = false; // set the flag to false
-			vec3 ballPos = vec3(ball.toWorld[3][0], ball.toWorld[3][1], ball.toWorld[3][2]);
-			ball.toWorld = Translate(ballPos) * Scale(originalBallScale); // reset the ball to the ground level with original scale
+
+			// Begin dropping the ball
+			DropBall();
 		}
 	}
 
-
+	//PICKUP
 	else {
 		vec4 ballPosition = ball.toWorld * vec4(vec3(0, 0, 0), 1); // get the ball's position
-		vec4 upperArmPosition = excavatorUpperArm.toWorld * vec4(vec3(0, 0, 0), 1); // get the upper arm's position
-		float distance = length(vec3(ballPosition) - vec3(upperArmPosition)); // calculate the distance between them
+		vec4 bottomOfUpperArmPosition = excavatorUpperArm.toWorld * vec4(bottomOfUpperArmLoc, 1); 
+		float distance = length(vec3(ballPosition) - vec3(bottomOfUpperArmPosition)); 
+		// calculate the distance between them
 
-		if (distance <= 0.6 && upperArmRotation > -1) { // if the distance is less than or equal to a certain threshold
+		if (distance <= 0.15 && upperArmRotation > -1) {
 			excavatorUpperArm.children.push_back(&ball); // add the ball to the children of the upper arm
-			ball.parent = &excavatorUpperArm; // set the parent of the ball to be the upper arm
+			ball.parent = &excavatorUpperArm; //set the parent of the ball to be the upper arm
 			ball.SetWrtParent(); // update the ball's position relative to its parent
 			ballPickedUp = true; // set the flag to true
+			dropZ = vec3(bottomOfUpperArmPosition).z;
+			fallProgress = 0.0f;  
 		}
 	}
 }
-
-
 
 
 
@@ -104,15 +146,16 @@ void TestKey() {
 		float dy = key == GLFW_KEY_UP ? -speed : speed;
 		excavatorTracks.toWorld = excavatorTracks.toWorld * Translate(0, dy, 0);
 	}
+
+	//lower arm rotation open 
 	if (key == 'P' && (lowerArmRotation < 5)) {
 		excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(centerOfLowerArmRotation) * RotateX(7) * Translate(-centerOfLowerArmRotation);
-		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, -0.2f, 0);
 		excavatorLowerArm.SetWrtParent();
 		lowerArmRotation++;
 	}
+	//lower arm rotation close
 	if (key == 'O' && (lowerArmRotation > -5)) {
 		excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(centerOfLowerArmRotation) * RotateX(-7) * Translate(-centerOfLowerArmRotation);
-		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, 0.2f, 0);
 		excavatorLowerArm.SetWrtParent();
 		lowerArmRotation--;
 	}
@@ -120,14 +163,12 @@ void TestKey() {
 	//close upper arm
 	if (key == 'G' && (upperArmRotation < 5)) {
 		excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(7) * Translate(-centerOfUpperArmRotation);
-		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, -0.2f, 0);
 		excavatorUpperArm.SetWrtParent();
 		upperArmRotation++;
-		cout << "close?";
 	}
+	//open upper arm
 	if (key == 'H' && (upperArmRotation > -5)) {
 		excavatorUpperArm.toWorld = excavatorUpperArm.toWorld * Translate(centerOfUpperArmRotation) * RotateX(-7) * Translate(-centerOfUpperArmRotation);
-		//excavatorLowerArm.toWorld = excavatorLowerArm.toWorld * Translate(0, 0.2f, 0);
 		excavatorUpperArm.SetWrtParent();
 		upperArmRotation--;
 
@@ -176,7 +217,7 @@ void Display() {
 	floorMesh.Display(camera);
 
 	// Render Excavator by parts
-	SetUniform(s, "color", vec3(0.2f,0.2f,0.2f));
+	SetUniform(s, "color", vec3(0.2f, 0.2f, 0.2f));
 	excavatorTracks.Display(camera);
 	SetUniform(s, "color", yellow);
 	excavatorCab.Display(camera);
@@ -187,6 +228,9 @@ void Display() {
 	SetUniform(s, "color", vec3(1.0f, 0.0f, 0.0f)); // Set the color of the ball
 	ball.Display(camera); // The ball's toWorld transformation will be calculated automatically
 
+	//Render the tree
+	SetUniform(s, "color", vec3(.4f, .4f, .6f));
+	tree.Display(camera);
 
 	// Render annotations
 	UseDrawShader(camera.fullview);
@@ -245,6 +289,8 @@ const char* usage = R"(
 	up/down arrows:    drive forward/backward
 	left/right arrows: rotate tracks
 	K/L:               rotate cab
+	G/H				   close/open upper arm
+	O/P:               close/open lower arm
 )";
 
 int main(int ac, char** av) {
@@ -286,6 +332,11 @@ int main(int ac, char** av) {
 	ball.Read(dir + "sphere.obj", NULL);
 	ball.toWorld = Translate(0, 0, -0.2) * Scale(originalBallScale);
 
+	//create the tree
+	tree.Read(dir + "tree.obj", NULL);
+	tree.toWorld = Translate(0, 3, 0.5) * RotateX(90);
+
+
 	// callbacks
 	RegisterMouseMove(MouseMove);
 	RegisterMouseButton(MouseButton);
@@ -297,6 +348,9 @@ int main(int ac, char** av) {
 	// event loop
 	while (!glfwWindowShouldClose(w)) {
 		CheckKey();
+		if(!ballPickedUp)
+			DropBall();
+
 		Display();
 		glfwPollEvents();
 		glfwSwapBuffers(w);
