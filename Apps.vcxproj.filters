@@ -57,7 +57,7 @@
     <ClCompile Include="Lib\Widgets.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="ExcavatorGame.cpp">
+    <ClCompile Include="ExcavatorSimulator.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

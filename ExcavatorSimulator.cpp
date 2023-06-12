@@ -289,7 +289,7 @@ const char* usage = R"(
 )";
 
 int main(int ac, char** av) {
-	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Excavation Celebration");
+	GLFWwindow* w = InitGLFW(100, 100, winWidth, winHeight, "Excavation Simulator!");
 
 	// read excavator files
 	string dir("C:/Users/kevin/source/repos/Graphics-Project/Assets/Models/");
